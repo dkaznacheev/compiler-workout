@@ -17,13 +17,26 @@ type prg = insn list
  *)
 type config = int list * Syntax.Stmt.config
 
+let bigStep conf i = match conf, i with
+    | (l, c), CONST n -> (n :: l, c)
+    | (l, (s, z :: zs, o)), READ -> (z :: l, (s, zs, o))
+    | _, READ -> failwith "No input"
+    | (z :: zs, (s, i, o)), WRITE -> (zs, (s, i, o @ [z]))
+    | _, WRITE -> failwith "Trying to write from empty stack"
+    | (l, (s, i, o)), LD x -> ((s x) :: l, (s, i, o))
+    | (z :: zs, (s, i, o)), ST x -> (zs, (Syntax.Expr.update x z s, i, o))
+    | _, ST _ ->  failwith "Trying to store from empty stack"
+    | (y :: x :: zs, (s, i, o)), BINOP op -> ((Syntax.Expr.applyBinOp op x y) :: zs, (s, i, o))
+    | (z :: zs, _), BINOP _ -> failwith "Trying to binop with one element stack"
+    | _, BINOP _ -> failwith "Trying to binop with empty stack"
+
 (* Stack machine interpreter
 
      val eval : config -> prg -> config
 
    Takes a configuration and a program, and returns a configuration as a result
  *)                         
-let eval _ = failwith "Not yet implemented"
+let eval = List.fold_left bigStep
 
 (* Top-level evaluation
 
@@ -33,6 +46,18 @@ let eval _ = failwith "Not yet implemented"
 *)
 let run i p = let (_, (_, _, o)) = eval ([], (Syntax.Expr.empty, i, [])) p in o
 
+(* Stack machine expression compiler
+
+     val compile : Syntax.Expr.t -> prg
+
+   Takes an expression in the source language and returns an equivalent program for the
+   stack machine
+ *)
+let rec compileExpr e = match e with
+    | Syntax.Expr.Const n -> [CONST n]
+    | Syntax.Expr.Var x -> [LD x]
+    | Syntax.Expr.Binop (op, a, b) -> (compileExpr a) @ (compileExpr b) @ [BINOP op]
+
 (* Stack machine compiler
 
      val compile : Syntax.Stmt.t -> prg
@@ -40,5 +65,13 @@ let run i p = let (_, (_, _, o)) = eval ([], (Syntax.Expr.empty, i, [])) p in o
    Takes a program in the source language and returns an equivalent program for the
    stack machine
  *)
+let rec compile t = match t with
+    | Syntax.Stmt.Assign (x, e) -> (compileExpr e) @ [ST x]
+    | Syntax.Stmt.Read x -> READ :: [ST x]
+    | Syntax.Stmt.Write e -> (compileExpr e) @ [WRITE]
+    | Syntax.Stmt.Seq (ta, tb) -> (compile ta) @ (compile tb)  
 
-let compile _ = failwith "Not yet implemented"
+
+
+
+
