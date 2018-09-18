@@ -88,6 +88,7 @@ module Expr =
                 ];
                 `Nona, [
                     ostap ("=="), (fun x y -> Binop("==", x, y)); 
+                    ostap ("!="), (fun x y -> Binop("!=", x, y)); 
                     ostap ("<="), (fun x y -> Binop("<=", x, y)); 
                     ostap ("<"),  (fun x y -> Binop("<", x, y)); 
                     ostap (">="), (fun x y -> Binop(">=", x, y)); 
