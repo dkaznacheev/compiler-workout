@@ -1,6 +1,8 @@
 open GT       
 open Language
-       
+open Language.Expr
+open Language.Stmt
+
 (* The type for the stack machine instructions *)
 @type insn =
 (* binary operator                 *) | BINOP of string
@@ -18,14 +20,24 @@ type prg = insn list
  *)
 type config = int list * Stmt.config
 
+let bigStep conf i = match conf, i with
+    | (l, c), CONST n -> (n :: l, c)
+    | (l, (s, z :: zs, o)), READ -> (z :: l, (s, zs, o))
+    | _, READ -> failwith "No input"
+    | (z :: zs, (s, i, o)), WRITE -> (zs, (s, i, o @ [z]))
+    | _, WRITE -> failwith "Trying to write from empty stack"
+    | (l, (s, i, o)), LD x -> ((s x) :: l, (s, i, o))
+    | (z :: zs, (s, i, o)), ST x -> (zs, (Language.Expr.update x z s, i, o))
+    | _, ST _ ->  failwith "Trying to store from empty stack"
+    | (y :: x :: zs, (s, i, o)), BINOP op -> ((Language.Expr.applyBinOp op x y) :: zs, (s, i, o))
+    | (z :: zs, _), BINOP _ -> failwith "Trying to binop with one element stack"
+    | _, BINOP _ -> failwith "Trying to binop with empty stack"
+
 (* Stack machine interpreter
-
      val eval : config -> prg -> config
-
    Takes a configuration and a program, and returns a configuration as a result
-*)                         
-let rec eval conf prog = failwith "Not yet implemented"
-
+ *)                         
+let eval = List.fold_left bigStep
 (* Top-level evaluation
 
      val run : prg -> int list -> int list
