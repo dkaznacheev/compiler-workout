@@ -158,25 +158,26 @@ module Stmt =
 
     (* Statement parser *)
     ostap (
-       stmt:
-           x :IDENT ":=" e:!(Expr.expr) {Assign (x, e)}
-           | "read" "(" x:IDENT ")" {Read x}
-           | "write" "(" e:!(Expr.expr) ")" {Write e}
-           | "skip" {Skip}
-           | "while" cond:!(Expr.expr) "do" bd:stmt "od" {While (cond, bd)}
-           | "for" init:stmt "," cond:!(Expr.expr) "," it:stmt "do" bd:stmt "od" {Seq (init, While (cond, Seq (bd, it)))}
-           | "repeat" bd:stmt "until" cond:!(Expr.expr) {Repeat (cond, bd)}
-           | "if" cond:!(Expr.expr) "then" bt:stmt "fi" {If (cond, bt, Skip)}
-           | "if" cond:!(Expr.expr) "then" bt:stmt "elif" elif:elseif "fi" {If (cond, bt, elif)}
-           | "if" cond:!(Expr.expr) "then" bt:stmt "else" bf:stmt "fi" {If (cond, bt, bf)};
-       elseif:
-           cond:!(Expr.expr) "then" bt:stmt "elif" elif:elseif {If (cond, bt, elif)}
-           | cond:!(Expr.expr) "then" bt:stmt "else" bf:stmt {If (cond, bt, bf)}
-           | cond:!(Expr.expr) "then" bt:stmt {If (cond, bt, Skip)};
+      simple_stmt:
+        x:IDENT ":=" e:!(Expr.expr) {Assign(x, e)}
+      | "read" "(" x:IDENT ")" {Read x}
+      | "write" "(" e:!(Expr.expr) ")" {Write e}
+	  | "skip" {Skip}
+	  | "while" cond:!(Expr.expr) "do" st:stmt "od" {While(cond, st)}
+	  | "for" init:stmt "," cond:!(Expr.expr) "," incr:stmt "do" st:stmt "od" {Seq (init, While(cond, Seq(st, incr)))}
+	  | "repeat" st:stmt "until" cond:!(Expr.expr) {Repeat (cond, st)}
+	  | "if" cond:!(Expr.expr) "then" bt:stmt "elif" elif:elseif "fi" {If (cond, bt, elif)}
+      | "if" cond:!(Expr.expr) "then" bt:stmt "else" bf:stmt "fi" {If (cond, bt, bf)}
+      | "if" cond:!(Expr.expr) "then" bt:stmt "fi" {If (cond, bt, Skip)};
 
+	  elseif:
+	  	cond:!(Expr.expr) "then" bt:stmt "elif" elif:elseif {If (cond, bt, elif)}
+      | cond:!(Expr.expr) "then" bt:stmt "else" bf:stmt {If (cond, bt, bf)}
+      | cond:!(Expr.expr) "then" bt:stmt {If (cond, bt, Skip)};
 
-       parse: <s::ss> : !(Util.listBy)[ostap (";")][stmt] {List.fold_left (fun s ss -> Seq (s, ss)) s ss}
-   )
+      stmt: <s::ss> : !(Util.listBy)[ostap (";")][simple_stmt] {List.fold_left (fun s ss -> Seq (s, ss)) s ss};
+      parse: stmt
+    )
 
   end
 
